@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomerProfile, DeliveryPartnerProfile, User
 from .serializers import (
     CustomerProfileSerializer,
@@ -29,7 +30,7 @@ class RegisterView(generics.CreateAPIView):
 
         refresh = RefreshToken.for_user(user)
         return Response({
-            'user': UserSerializer(user.data),
+           'user': UserSerializer(user).data,
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
