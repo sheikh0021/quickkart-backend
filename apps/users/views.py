@@ -3,13 +3,14 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import CustomerProfile, DeliveryPartnerProfile, User
+from .models import CustomerProfile, DeliveryPartnerProfile, User, Address
 from .serializers import (
     CustomerProfileSerializer,
     DeliveryPartnerProfileSerializer,
     LoginSerializer,
     RegisterSerializer,
     UserSerializer,
+    AddressSerializer,
 )
 
 class RegisterView(generics.CreateAPIView):
@@ -57,11 +58,11 @@ class LoginView(generics.GenericAPIView):
 
 class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = (IsAuthenticated,)
-    serializer_class = UserSerializer 
+    serializer_class = UserSerializer
 
     def get_object(self):
         return self.request.user
-    
+
     def get_serializer_class(self):
         user = self.request.user
         if user.user_type == 'customer':
@@ -69,11 +70,28 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         elif user.user_type == 'delivery_partner':
             return DeliveryPartnerProfileSerializer
         return UserSerializer
-    
+
     def get_object(self):
         user = self.request.user
         if user.user_type == 'customer':
-            return user.customerprofile
+            return user.customer_profile
         elif user.user_type == 'delivery_partner':
-            return user.delivery_profile
+            return user.delivery_partner_profile
         return user
+
+class AddressListView(generics.ListCreateAPIView):
+    serializer_class = AddressSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AddressSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user)

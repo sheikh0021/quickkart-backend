@@ -42,4 +42,27 @@ class DeliveryPartnerProfile(models.Model):
 
     def __str__(self):
         return f"Delivery Partner: {self.user.username}"
+
+class Address(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    street = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    zip_code = models.CharField(max_length=20)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = 'Addresses'
+
+    def __str__(self):
+        return f"{self.street}, {self.city}, {self.state} - {self.zip_code}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one default address per user
+        if self.is_default:
+            Address.objects.filter(user=self.user, is_default=True).update(is_default=False)
+        super().save(*args, **kwargs)
     

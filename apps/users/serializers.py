@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import User, CustomerProfile, DeliveryPartnerProfile
+from .models import User, CustomerProfile, DeliveryPartnerProfile, Address
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'user_type', 'phone_number']
-    
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -17,7 +17,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user
-
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -42,3 +41,13 @@ class DeliveryPartnerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryPartnerProfile
         fields = '__all__'
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
+        read_only_fields = ['user']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

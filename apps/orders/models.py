@@ -20,7 +20,7 @@ class Order(models.Model):
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_address = models.TextField()
     delivery_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    delivery_longtitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    delivery_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     payment_method = models.CharField(max_length=20, default='cod')
     payment_status = models.CharField(max_length=20, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)

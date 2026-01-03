@@ -6,6 +6,7 @@ from django.utils import timezone
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, CreateOrderSerializer
 from apps.products.models import Product
+from apps.users.models import Address
 import uuid
 
 class OrderListView(generics.ListAPIView):
@@ -33,40 +34,40 @@ class CreateOrderView(generics.CreateAPIView):
         # Generate order number
         order_number = f"QK{uuid.uuid4().hex[:8].upper()}"
 
-        # Calculate total
-        items_data = serializer.validated_data['items']
-        total_amount = 0
-        order_items = []
+        # Get validated data from serializer
+        address_id = serializer.validated_data['address_id']
+        notes = serializer.validated_data.get('notes', '')
 
-        for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'])
-            quantity = item_data['quantity']
-            total_price = product.price * quantity
-            total_amount += total_price
-
-            order_items.append({
-                'product': product,
-                'quantity': quantity,
-                'unit_price': product.price,
-                'total_price': total_price
-            })
+        # Get address and determine store from items
+        address = Address.objects.get(id=address_id, user=request.user)
+        store = serializer.validated_items[0]['product'].store  # All items should be from same store
 
         # Create order
         order = Order.objects.create(
             customer=request.user,
-            store_id=serializer.validated_data['store_id'],
+            store=store,
             order_number=order_number,
-            total_amount=total_amount,
-            delivery_address=serializer.validated_data['delivery_address'],
-            delivery_latitude=serializer.validated_data.get('delivery_latitude'),
-            delivery_longitude=serializer.validated_data.get('delivery_longitude'),
+            total_amount=serializer.total_amount,
+            delivery_address=f"{address.street}, {address.city}, {address.state} - {address.zip_code}",
+            delivery_latitude=address.latitude,
+            delivery_longitude=address.longitude,
+            payment_method='cod',  # Default to COD
+            status='placed'
         )
 
         # Create order items
-        for item_data in order_items:
+        for item_data in serializer.validated_items:
             OrderItem.objects.create(
                 order=order,
-                **item_data
+                product=item_data['product'],
+                quantity=item_data['quantity'],
+                unit_price=item_data['unit_price'],
+                total_price=item_data['total_price']
             )
+
+            # Update product stock
+            product = item_data['product']
+            product.stock_quantity -= item_data['quantity']
+            product.save()
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
