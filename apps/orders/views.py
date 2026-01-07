@@ -37,6 +37,7 @@ class CreateOrderView(generics.CreateAPIView):
         # Get validated data from serializer
         address_id = serializer.validated_data['address_id']
         notes = serializer.validated_data.get('notes', '')
+        payment_method = serializer.validated_data.get('payment_method', 'COD').lower()  # ✅ Extract from request
 
         # Get address and determine store from items
         address = Address.objects.get(id=address_id, user=request.user)
@@ -51,7 +52,7 @@ class CreateOrderView(generics.CreateAPIView):
             delivery_address=f"{address.street}, {address.city}, {address.state} - {address.zip_code}",
             delivery_latitude=address.latitude,
             delivery_longitude=address.longitude,
-            payment_method='cod',  # Default to COD
+            payment_method=payment_method,  # ✅ Use from request (defaults to 'cod' if not provided)
             status='placed'
         )
 
@@ -70,4 +71,6 @@ class CreateOrderView(generics.CreateAPIView):
             product.stock_quantity -= item_data['quantity']
             product.save()
 
+        # ✅ Refresh order from database to ensure items relationship is loaded
+        order.refresh_from_db()
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)

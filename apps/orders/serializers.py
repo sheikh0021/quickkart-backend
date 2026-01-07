@@ -23,11 +23,10 @@ class OrderSerializer(serializers.ModelSerializer):
 class CreateOrderSerializer(serializers.Serializer):
     address_id = serializers.IntegerField()  # Use address from Address model
     items = serializers.ListField(
-        child=serializers.DictField(
-            child=serializers.IntegerField()
-        )
+        child=serializers.DictField()  # ✅ Changed: Accept any dict structure (not just integers)
     )
     notes = serializers.CharField(required=False, allow_blank=True)
+    payment_method = serializers.CharField(required=False, default='COD')  # ✅ Added: Accept payment method
 
     def validate_address_id(self, value):
         """Validate that the address belongs to the current user"""
@@ -49,6 +48,7 @@ class CreateOrderSerializer(serializers.Serializer):
         total_amount = 0
 
         for item in value:
+            # ✅ Extract required fields (ignore optional ones like product_name, price, total)
             product_id = item.get('product_id')
             quantity = item.get('quantity', 1)
 
@@ -60,14 +60,15 @@ class CreateOrderSerializer(serializers.Serializer):
                 if quantity > product.stock_quantity:
                     raise serializers.ValidationError(f"Insufficient stock for {product.name}")
 
+                # ✅ Backend always uses database price (ignores client-sent price for security)
                 item_total = product.price * quantity
                 total_amount += item_total
 
                 validated_items.append({
                     'product': product,
                     'quantity': quantity,
-                    'unit_price': product.price,
-                    'total_price': item_total
+                    'unit_price': product.price,  # ✅ Always from database
+                    'total_price': item_total     # ✅ Always calculated by backend
                 })
             except Product.DoesNotExist:
                 raise serializers.ValidationError(f"Product with id {product_id} not found")
