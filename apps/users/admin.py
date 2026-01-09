@@ -10,4 +10,12 @@ class CustomerUserAdmin(UserAdmin):
 
 admin.site.register(CustomerProfile)
 admin.site.register(DeliveryPartnerProfile)
+
+ADMIN_SITE_HEADER = "QuickKart Admin Panel"
+ADMIN_SITE_TITLE = "QuickKart Administration"
+ADMIN_INDEX_TITLE = "Welcome to QuickKart Admin"
+
+admin.site.site_header = ADMIN_SITE_HEADER
+admin.site.site_title = ADMIN_SITE_TITLE
+admin.site.index_title = ADMIN_INDEX_TITLE
   
