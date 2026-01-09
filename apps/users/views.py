@@ -121,3 +121,19 @@ def change_password_view(request):
 def logout_view(request):
     """Logout user (client-side token removal)"""
     return Response({'message': 'Logged out successfully'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_fcm_token(request):
+    """Update user's FCM token for push notifications"""
+    token = request.data.get('fcm_token')
+
+    if not token:
+        return Response(
+            {'error': 'FCM token is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    request.user.fcm_token = token
+    request.user.save()
+
+    return Response({'message': 'FCM token updated successfully'})

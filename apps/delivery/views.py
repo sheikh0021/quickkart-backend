@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from .models import DeliveryAssignment, LocationUpdate
 from .serializers import DeliveryAssignmentSerializer, LocationUpdateSerializer
 from apps.orders.models import Order
+from core.utils import send_order_status_notification
 
 class DeliveryAssignmentListView(generics.ListAPIView):
     serializer_class = DeliveryAssignmentSerializer
@@ -72,6 +73,7 @@ def update_delivery_status(request, assignment_id):
         elif status_update == 'delivered' and not assignment.delivered_at:
             assignment.delivered_at = timezone.now()
             assignment.order.status = 'delivered'
+            send_order_status_notification(assignment.order, 'delivered')
 
         assignment.save()
         assignment.order.save()

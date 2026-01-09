@@ -191,3 +191,7 @@ CHANNEL_LAYERS = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Firebase settings
+FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', 'your-project-id')
+FIREBASE_SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, 'firebase-service-account.json')

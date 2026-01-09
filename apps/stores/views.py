@@ -70,9 +70,14 @@ def home_view(request):
         # Get active banners
         banners = Banner.objects.filter(is_active=True)
 
+        #get active categories
+        from apps.products.models import Category
+        categories = Category.objects.filter(is_active=True)
+
         # Prepare response data
         response_data = {
             'stores': stores,
+            'categories': categories,
             'banners': banners,
         }
 

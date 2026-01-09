@@ -13,6 +13,9 @@ class User(AbstractUser):
     phone_number = models.CharField(max_length=15, unique=True)
     is_verified = models.BooleanField(default=False)
 
+    #this is for push notifications 
+    fcm_token = models.CharField(max_length=255, blank=True, null=True, help_text="Firebase Cloud Messaging Token for push notifications")
+
     def __str__(self):
         return f"{self.username} ({self.get_user_type_display()})"
     

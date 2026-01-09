@@ -2,11 +2,13 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, CreateOrderSerializer
 from apps.products.models import Product
 from apps.users.models import Address
+from core.utils import send_order_status_notification
 import uuid
 
 class OrderListView(generics.ListAPIView):
@@ -73,4 +75,37 @@ class CreateOrderView(generics.CreateAPIView):
 
         # ✅ Refresh order from database to ensure items relationship is loaded
         order.refresh_from_db()
+        send_order_status_notification(order, 'placed')
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_order_status(request, order_id):
+    """Update order status (for admin/store operations)"""
+    try:
+        order = Order.objects.get(id=order_id)
+
+        new_status = request.data.get('status')
+        valid_statuses = ['confirmed', 'packed', 'out_for_delivery', 'delivered', 'cancelled']
+
+        if new_status not in valid_statuses:
+            return Response({'error': f'Invalid status. Must be one of: {",".join(valid_statuses)}'},
+                                status=status.HTTP_400_BAD_REQUEST
+                                )
+        old_status = order.status
+        order.status = new_status
+        order.save()
+
+        if new_status in ['packed', 'out_for_delivery', 'delivered']:
+           send_order_status_notification(order, 'packed' if new_status == 'packed' else new_status)
+
+        return Response({
+                'message': f'Order status updated from {old_status} to {new_status}',
+                'order_id': order.id,
+                'order_number': order.order_number
+            })
+    except Order.DoesNotExist:
+         return Response(
+                {'error': 'Order not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
