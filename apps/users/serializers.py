@@ -13,6 +13,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'user_type']
+    
+    def validate_user_type(self, value):
+        if value not in ['customer', 'delivery_partner']:
+            raise serializers.ValidationError("Invalid user type.")
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)

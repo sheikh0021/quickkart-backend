@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DeliveryAssignment, LocationUpdate
+from .models import DeliveryAssignment, LocationUpdate, DeliveryEarnings
 
 class DeliveryAssignmentSerializer(serializers.ModelSerializer):
     order_details = serializers.SerializerMethodField()
@@ -27,3 +27,12 @@ class LocationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = LocationUpdate
         fields = '__all__'
+
+
+class DeliveryEarningsSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source='assignment.order.order_number', read_only=True)
+    earned_date = serializers.DateField(source='earned_at', read_only=True)
+
+    class Meta:
+        model = DeliveryEarnings
+        fields = ['id', 'amount', 'earned_at', 'earned_date', 'order_number']
