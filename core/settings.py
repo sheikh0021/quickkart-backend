@@ -173,6 +173,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
+# Site URL for API responses (Android emulator)
+SITE_URL = 'http://10.0.2.2:8000'  # For Android emulator
+# SITE_URL = 'http://192.168.1.100:8000'  # Uncomment for physical device
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
