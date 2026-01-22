@@ -15,6 +15,8 @@ class DeliveryAssignmentSerializer(serializers.ModelSerializer):
             'status': obj.order.status,
             'total_amount': obj.order.total_amount,
             'delivery_address': obj.order.delivery_address,
+            'delivery_latitude': float(obj.order.delivery_latitude) if obj.order.delivery_latitude else None,
+            'delivery_longitude': float(obj.order.delivery_longitude) if obj.order.delivery_longitude else None,
         }
 
     def get_customer_details(self, obj):

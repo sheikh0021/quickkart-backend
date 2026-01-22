@@ -4,6 +4,9 @@ class IsCustomer(BasePermission):
     """Allow access only to customers"""
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.user_type == 'customer'
+    
+    def has_permission(self,request,view):
+        return hasattr(request.user, 'customer_profile') and request.user.customer_profile is not None
 
 class IsDeliveryPartner(BasePermission):
     """Allow access only to delivery partners"""

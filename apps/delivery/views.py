@@ -11,6 +11,9 @@ from django.db.models import Sum
 from apps.orders.models import Order
 from core.utils import send_order_status_notification
 from .permissions import IsDeliveryPartner
+import googlemaps
+from django.conf import settings
+
 
 class DeliveryAssignmentListView(generics.ListAPIView):
     serializer_class = DeliveryAssignmentSerializer
@@ -297,3 +300,131 @@ def update_availability(request):
             {'error': 'Failed to update availability'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_delivery_location(request, order_id):
+    """Get latest location update for a specific order"""
+    try:
+        order = Order.objects.get(id=order_id, customer=request.user)
+
+        try:
+            assignment = DeliveryAssignment.objects.select_related(
+                'delivery_partner', 'order'
+            ).get(order=order)
+
+            latest_location = LocationUpdate.objects.filter(
+                order=order,
+                delivery_partner=assignment.delivery_partner
+            ).order_by('-timestamp').first()
+
+            if latest_location:
+                return Response({
+                    'delivery_partner': {
+                        'name': assignment.delivery_partner.username,
+                        'phone': assignment.delivery_partner.phone_number
+                    },
+                    'location':{
+                        'latitude': float(latest_location.latitude),
+                        'longitude': float(latest_location.longitude),
+                        'timestamp': latest_location.timestamp.isoformat(),
+                    },
+                    'assignment_status': {
+                        'picked_up': assignment.picked_up_at is not None,
+                        'out_for_delivery': assignment.order.status == 'out_for_delivery',
+                        'delivered': assignment.delivered_at is not None,
+                    }
+                })
+            else:
+                partner_profile = assignment.delivery_partner.delivery_partner_profile
+                if partner_profile.current_latitude and partner_profile.current_longitude:
+                    return Response({
+                        'delivery_partner':{
+                            'name': assignment.delivery_partner.username,
+                            'phone': assignment.delivery_partner.phone_number,
+                        },
+                        'location': {
+                            'latitude': float(partner_profile.current_latitude),
+                            'longitude': float(partner_profile.current_longitude),
+                            'timestamp': timezone.now().isoformat(),
+                        },
+                        'assignment_status': {
+                            'picked_up': assignment.picked_up_at is not None,
+                            'out_for_delivery': assignment.order.status == 'out_for_delivery',
+                            'delivered': assignment.delivered_at is not None,
+                        }
+                    })
+                else:
+                    return Response({
+                        'message': 'Delivery partner location not available yet',
+                        'assignment_status': {
+                            'picked_up': assignment.picked_up_at is not None,
+                            'out_for_delivery': assignment.order.status == 'out_for_delivery',
+                            'delivered': assignment.delivered_at is not None,
+                        }
+                    }, status=status.HTTP_200_OK)
+
+        except DeliveryAssignment.DoesNotExist:
+            return Response(
+                {'error': 'Order not assigned to delivery partner yet.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    except Order.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': 'An unexpected error occurred'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        ) 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_delivery_route(request, order_id):
+    """Get optimized route for delivery partner to customer"""
+    try:
+        order = Order.objects.get(id=order_id, customer=request.user)
+        assignment = DeliveryAssignment.objects.get(order=order)
+
+        latest_location = LocationUpdate.objects.filter(
+            order=order,
+            delivery_partner=assignment.delivery_partner
+        ).order_by('-timestamp').first()
+
+        if not latest_location:
+            return Response({'error': 'No location available'}
+                , status=status.HTTP_404_NOT_FOUND)
+        
+        gmaps = googlemaps.Client(key=settings.GOOGLE_MAPS_API_KEY)
+
+        directions_result = gmaps.directions(
+            origin=(float(latest_location.latitude),
+                    float(latest_location.longitude)),
+            destination=(float(order.delivery_latitude),
+                         float(order.delivery_longitude)),
+            mode="driving",
+            departure_time=timezone.now() 
+        )
+        if directions_result:
+            route = directions_result[0]
+            polyline = route['overview_polyline']['points']
+            duration = route['legs'][0]['duration']['text']
+            distance = route['legs'][0]['distance']['text']
+            
+            return Response({
+                'polyline': polyline,
+                'duration': duration,
+                'distance': distance,
+                'eta_minutes': route['legs'][0]['duration']['value'] // 60
+            })
+        return Response({'error': 'No route found'},
+                        status=status.HTTP_404_NOT_FOUND)
+    
+    except Exception as e:
+        return Response({'error': str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+     

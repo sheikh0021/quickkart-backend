@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.orders',
     'apps.delivery',
+    'apps.chat',
 ]
 
 #REST Framework settings

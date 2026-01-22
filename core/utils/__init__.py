@@ -123,6 +123,34 @@ def send_admin_notification(title, body, data=None):
     except Exception as e:
         print(f"Error sending admin notification: {e}")
 
+def send_chat_message_fcm(recipient_user, room, message):
+    """Send FCM data message for new chat message. Recipient must have fcm_token."""
+    try:
+        if not getattr(recipient_user, 'fcm_token', None) or not recipient_user.fcm_token:
+            print(f"No FCM token for {recipient_user.username}, skipping chat FCM")
+            return
+        initialize_firebase()
+        from firebase_admin import messaging
+        data = {
+            'type': 'chat_message',
+            'room_id': str(room.id),
+            'id': str(message.id),
+            'sender_id': str(message.sender.id),
+            'sender_name': message.sender.username,
+            'sender_type': message.sender.user_type,
+            'message': message.message,
+            'is_read': 'false',
+            'created_at': message.created_at.isoformat(),
+        }
+        msg = messaging.Message(
+            data=data,
+            token=recipient_user.fcm_token,
+        )
+        messaging.send(msg)
+    except Exception as e:
+        print(f"Error sending chat FCM: {e}")
+
+
 def send_delivery_notification(order, notification_type):
     """Send notification to assigned delivery partner"""
     initialize_firebase()
