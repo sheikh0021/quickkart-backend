@@ -15,7 +15,7 @@ class StoreListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = Store.objects.filter(is_active=True)
 
-        # Filter by location (simple distance calculation)
+     
         latitude = self.request.query_params.get('lat')
         longitude = self.request.query_params.get('lng')
 
@@ -24,20 +24,18 @@ class StoreListView(generics.ListAPIView):
                 user_lat = float(latitude)
                 user_lng = float(longitude)
 
-                # Filter stores within reasonable distance (simplified)
-                # In production, you'd use PostGIS or a proper geospatial query
                 filtered_stores = []
                 for store in queryset:
                     distance = self.calculate_distance(
                         user_lat, user_lng,
                         float(store.latitude), float(store.longitude)
                     )
-                    if distance <= store.delivery_radius:  # within delivery radius
+                    if distance <= store.delivery_radius:  
                         filtered_stores.append(store.id)
 
                 queryset = queryset.filter(id__in=filtered_stores)
             except (ValueError, TypeError):
-                pass  # Invalid coordinates, return all stores
+                pass  
 
         return queryset
 
@@ -64,26 +62,26 @@ class StoreDetailView(generics.RetrieveAPIView):
 def home_view(request):
     """Home endpoint that returns stores, categories, and banners for the home screen"""
     try:
-        # Get nearby stores (simplified - in production use user's location)
-        stores = Store.objects.filter(is_active=True)[:20]  # Limit for performance
-
-        # Get active banners
+       
+        stores = Store.objects.filter(is_active=True)[:20]  
         banners = Banner.objects.filter(is_active=True)
-
-        #get active categories
         from apps.products.models import Category
         categories = Category.objects.filter(is_active=True)
 
-        # Prepare response data
+        from apps.products.models import Product
+        featured_products = Product.objects.filter(
+            is_available=True,
+            store__is_active=True
+        ).select_related('store', 'category').order_by('-created_at')[:12]  
+
         response_data = {
             'stores': stores,
             'categories': categories,
             'banners': banners,
+            'products': featured_products,
         }
-
         serializer = HomeResponseSerializer(response_data)
         return Response(serializer.data)
-
     except Exception as e:
         return Response(
             {'error': 'Failed to load home data'},

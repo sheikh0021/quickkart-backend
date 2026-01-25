@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Store, Banner
 from apps.products.models import Category
 from django.conf import settings
+from apps.products.serializers import ProductSerializer
 
 class BannerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,6 +25,7 @@ class HomeResponseSerializer(serializers.Serializer):
     stores = StoreSerializer(many=True)
     categories = serializers.SerializerMethodField()
     banners = BannerSerializer(many=True)
+    products = ProductSerializer(many=True)  # ADD THIS LINE
 
     def get_categories(self, obj):
         categories = Category.objects.filter(is_active=True)
